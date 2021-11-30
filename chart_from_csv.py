@@ -79,6 +79,7 @@ def gen_chart(stock_name, start_date, phase='train', timestep=timestep, data_dir
     #cv2.imshow('image', image)
     #cv2.waitKey(1)
     
+    plt.close('all')
     return image
 
 def daterange(start_date, end_date):
@@ -90,13 +91,15 @@ end_date = date(2017, 11, 15) #30 business days before 12.29
 end_date_test = date(2019, 11, 15)
 
 for single_date in daterange(start_date, end_date):
-    single_date = single_date.strftime('%Y-%m-%d')
-    print('generating chart with ', single_date)
-    for stock_name in ['Apple', 'Samsung']:
-        gen_chart(stock_name, single_date, phase='train', timestep=timestep, data_dir=data_dir, save=True)
+    if single_date.weekday() <= 4:
+        single_date = single_date.strftime('%Y-%m-%d')
+        print('generating chart with ', single_date)
+        for stock_name in ['Apple', 'Samsung']:
+            gen_chart(stock_name, single_date, phase='train', timestep=timestep, data_dir=data_dir, save=True)
 
 for single_date in daterange(end_date, end_date_test):
-    single_date = single_date.strftime('%Y-%m-%d')
-    print('generating chart with ', single_date)
-    for stock_name in ['Apple', 'Samsung']:
-        gen_chart(stock_name, single_date, phase='test', timestep=timestep, data_dir=data_dir, save=True)
+    if single_date.weekday() <= 4:
+        single_date = single_date.strftime('%Y-%m-%d')
+        print('generating chart with ', single_date)
+        for stock_name in ['Apple', 'Samsung']:
+            gen_chart(stock_name, single_date, phase='test', timestep=timestep, data_dir=data_dir, save=True)

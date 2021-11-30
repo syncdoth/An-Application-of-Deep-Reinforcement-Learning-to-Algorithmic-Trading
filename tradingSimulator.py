@@ -41,7 +41,8 @@ splitingDate = '2018-1-1'
 
 # Variables defining the default observation and state spaces
 stateLength = 2
-observationSpace = 1 + (stateLength - 1) * 4
+#observationSpace = 1 + (stateLength - 1) * 4
+observationSpace = 5
 
 actionSpace = 2
 

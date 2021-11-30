@@ -296,25 +296,34 @@ class DQN(nn.Module):
                 'kernel_size': 2,
                 'stride': 1,
             }
-
-        input_block = block(numberOfInputs, numberOfNeurons, dropout=dropout, **args)
-        conv_block_args = {
-            'kernel_size': [2, 2, 2],
-            'stride': [1, 1, 1]
-        }
+        
+        input_block = block(numberOfInputs, numberOfNeurons, dropout)
         hidden_blocks = [
-            block(numberOfNeurons, numberOfNeurons, dropout=dropout, kernel_size=conv_block_args['kernel_size'][i], \
-                stride=conv_block_args['stride'][i]) if blockType == 'conv' \
-                    else block(numberOfNeurons, numberOfNeurons, dropout=dropout)
-            for i in range(numberOfLayers - 2)
+            block(numberOfNeurons, numberOfNeurons, dropout=dropout) for i in range(numberOfLayers - 2)
         ]
         self.hidden_layers = nn.Sequential(
             input_block,
             *hidden_blocks,
         )
 
-        #self.out_layer = nn.Linear(numberOfNeurons, numberOfOutputs)
-        self.out_layer = nn.Linear(28, numberOfOutputs)
+        if blockType == 'conv':
+            input_block = block(numberOfInputs, numberOfNeurons, dropout=dropout, **args)
+            conv_block_args = {
+                'kernel_size': [2, 2, 2],
+                'stride': [1, 1, 1]
+            }
+            hidden_blocks = [
+                block(numberOfNeurons, numberOfNeurons, dropout=dropout, kernel_size=conv_block_args['kernel_size'][i], \
+                    stride=conv_block_args['stride'][i]) if blockType == 'conv' \
+                        else block(numberOfNeurons, numberOfNeurons, dropout=dropout)
+                for i in range(numberOfLayers - 2)
+            ]
+            self.hidden_layers = nn.Sequential(
+                input_block,
+                *hidden_blocks,
+            )
+
+        self.out_layer = nn.Linear(numberOfNeurons, numberOfOutputs)
 
 
     def forward(self, x):
@@ -747,7 +756,7 @@ class TDQN:
                  trainingParameters=[],
                  verbose=False,
                  rendering=False,
-                 plotTraining=False,
+                 plotTraining=True,
                  showPerformance=False):
         """
         GOAL: Train the RL trading agent by interacting with its trading environment.
