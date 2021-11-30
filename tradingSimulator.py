@@ -96,7 +96,8 @@ stocks = {
     'Toyota': '7203.T',
     'Coca Cola': 'KO',
     'AB InBev': 'ABI.BR',
-    'Kirin': '2503.T'
+    'Kirin': '2503.T',
+    'Samsung': '005930'
 }
 
 # Dictionary listing the 5 trading indices considered as testbench
@@ -105,7 +106,8 @@ indices = {
     'S&P 500': 'SPY',
     'NASDAQ 100': 'QQQ',
     'FTSE 100': 'EZU',
-    'Nikkei 225': 'EWJ'
+    'Nikkei 225': 'EWJ',
+    'Samsung': '005930'
 }
 
 # Dictionary listing the 25 company stocks considered as testbench
@@ -134,7 +136,8 @@ companies = {
     'Toyota': '7203.T',
     'Coca Cola': 'KO',
     'AB InBev': 'ABI.BR',
-    'Kirin': '2503.T'
+    'Kirin': '2503.T',
+    'Samsung': '005930'
 }
 
 # Dictionary listing the classical trading strategies supported
