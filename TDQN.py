@@ -71,7 +71,6 @@ L2Factor = 0.000001
 # Default paramter related to the hardware acceleration (CUDA)
 GPUNumber = 0
 
-timesteps = 4
 ###############################################################################
 ############################### Class ReplayMemory ############################
 ###############################################################################
@@ -224,7 +223,7 @@ class ConvBlock(nn.Module):
     def __init__(self,
                  numberOfInputs,
                  numberOfOutputs,
-                 dropout=dropout,
+                 dropout=0.5,
                  kernel_size=2,
                  stride=1):
         super().__init__()
@@ -232,7 +231,9 @@ class ConvBlock(nn.Module):
             nn.Conv1d(numberOfInputs,
                       numberOfOutputs,
                       kernel_size=kernel_size,
-                      stride=stride), nn.LeakyReLU(), nn.BatchNorm1d(numberOfOutputs),
+                      stride=stride),
+            nn.LeakyReLU(),
+            nn.BatchNorm1d(numberOfOutputs),
             nn.Dropout(dropout))
         torch.nn.init.xavier_uniform_(self.block[0].weight)
 
@@ -284,7 +285,7 @@ class DQN(nn.Module):
 
         # Call the constructor of the parent class (Pytorch torch.nn.Module)
         super().__init__()
-
+        self.blockType = blockType
         if blockType == 'linear':
             block = LinearBlock
         elif blockType == 'attention':
@@ -297,16 +298,24 @@ class DQN(nn.Module):
             }
 
         input_block = block(numberOfInputs, numberOfNeurons, dropout=dropout, **args)
+        conv_block_args = {
+            'kernel_size': [2, 2, 2],
+            'stride': [1, 1, 1]
+        }
         hidden_blocks = [
-            block(numberOfNeurons, numberOfNeurons, dropout=dropout)
-            for _ in range(numberOfLayers - 2)
+            block(numberOfNeurons, numberOfNeurons, dropout=dropout, kernel_size=conv_block_args['kernel_size'][i], \
+                stride=conv_block_args['stride'][i]) if blockType == 'conv' \
+                    else block(numberOfNeurons, numberOfNeurons, dropout=dropout)
+            for i in range(numberOfLayers - 2)
         ]
         self.hidden_layers = nn.Sequential(
             input_block,
             *hidden_blocks,
         )
 
-        self.out_layer = nn.Linear(numberOfNeurons, numberOfOutputs)
+        #self.out_layer = nn.Linear(numberOfNeurons, numberOfOutputs)
+        self.out_layer = nn.Linear(28, numberOfOutputs)
+
 
     def forward(self, x):
         """
@@ -316,7 +325,8 @@ class DQN(nn.Module):
 
         OUTPUTS: - output: Output of the Deep Neural Network.
         """
-
+        if self.blockType == 'conv':
+            x = np.transpose(x, (1, 2, 0))
         x = self.hidden_layers(x)
         if len(x.shape) > 2:
             x = x[:, -1, :]
@@ -381,6 +391,7 @@ class TDQN:
     def __init__(self,
                  observationSpace,
                  actionSpace,
+                 timesteps=20,
                  numberOfNeurons=numberOfNeurons,
                  numberOfLayers=5,
                  blockType='linear',

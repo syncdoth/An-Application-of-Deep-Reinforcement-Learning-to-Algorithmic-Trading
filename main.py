@@ -35,12 +35,14 @@ if (__name__ == '__main__'):
                         type=str,
                         choices=['conv', 'linear', 'attention'])
     parser.add_argument("-num_episodes", default=50, type=int)
+    parser.add_argument("-timesteps", default=5, type=int)
     args = parser.parse_args()
 
     # Initialization of the required variables
     simulator = TradingSimulator()
     strategy = args.strategy
     stock = args.stock
+    #timesteps = args.timesteps
 
     kwargs = dict(
         numberOfLayers=args.num_layers,
@@ -51,6 +53,7 @@ if (__name__ == '__main__'):
                                   stock,
                                   saveStrategy=False,
                                   numberOfEpisodes=args.num_episodes,
+                                  timesteps=args.timesteps,
                                   **kwargs)
     """
     simulator.displayTestbench()

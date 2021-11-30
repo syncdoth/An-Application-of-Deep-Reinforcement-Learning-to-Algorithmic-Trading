@@ -40,8 +40,9 @@ endingDate = '2020-1-1'
 splitingDate = '2018-1-1'
 
 # Variables defining the default observation and state spaces
-stateLength = 30
+stateLength = 2
 observationSpace = 1 + (stateLength - 1) * 4
+
 actionSpace = 2
 
 # Variables setting up the default transaction costs
@@ -352,6 +353,7 @@ class TradingSimulator:
                             rendering=True,
                             showPerformance=True,
                             saveStrategy=False,
+                            timesteps=20,
                             **kwargs):
         """
         GOAL: Simulate a new trading strategy on a certain stock included in the
@@ -436,7 +438,7 @@ class TradingSimulator:
         if ai:
             strategyModule = importlib.import_module(str(strategy))
             className = getattr(strategyModule, strategy)
-            tradingStrategy = className(observationSpace, actionSpace, **kwargs)
+            tradingStrategy = className(observationSpace, actionSpace, timesteps=timesteps, **kwargs)
         else:
             strategyModule = importlib.import_module('classicalStrategy')
             className = getattr(strategyModule, strategy)
