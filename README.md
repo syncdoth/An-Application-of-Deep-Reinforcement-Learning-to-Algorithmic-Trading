@@ -8,8 +8,8 @@ Experimental code supporting the results presented in the scientific research pa
 # Dependencies
 
 The dependencies are listed in the text file "requirements.txt":
-* Python 3.7.4
-* Pytorch 1.5.0
+* Python >= 3.6.8
+* Pytorch >= 1.7.1
 * Tensorboard
 * Gym
 * Numpy
@@ -32,6 +32,7 @@ Simulating (training and testing) a chosen supported algorithmic trading strateg
 
 ```bash
 python main.py -strategy STRATEGY -stock STOCK
+# Currently working with Apple, Samsung Electronics
 ```
 
 with:
