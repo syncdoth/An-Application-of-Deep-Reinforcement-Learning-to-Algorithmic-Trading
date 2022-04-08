@@ -3,6 +3,8 @@ Experimental code supporting the results presented in the scientific research pa
 > Thibaut Théate and Damien Ernst. "An Application of Deep Reinforcement Learning to Algorithmic Trading." (2020).
 > [[arxiv]](https://arxiv.org/abs/2004.06627)
 
+# Personal Implication of Reinforcement Learning in different aspects, such as Deep Q Learning, usage of CNN in Reinforcement Learning.
+# HKUST AIDL Society November - December Algorithmic Trading Project
 
 
 # Dependencies
