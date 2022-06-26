@@ -8,7 +8,7 @@ Institution: University of Liège
 import numpy as np
 import pandas as pd
 from scipy import signal
-from dataDownloader import YahooFinance
+from data_preparation.dataDownloader import YahooFinance
 
 # Default values for the generation of the fictive stock market curves
 MIN = 100
