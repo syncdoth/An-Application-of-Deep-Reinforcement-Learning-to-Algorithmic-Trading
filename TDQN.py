@@ -14,7 +14,6 @@ from collections import deque
 
 import numpy as np
 import torch
-import torch.autograd as autograd
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -26,45 +25,40 @@ from data_preparation.dataAugmentation import DataAugmentation
 from tradingEnv import TradingEnv
 from tradingPerformance import PerformanceEstimator
 
-# Default parameters related to the DQN algorithm
-gamma = 0.4
-learningRate = 0.0001
-targetNetworkUpdate = 1000
-learningUpdatePeriod = 1
 
-# Default parameters related to the Experience Replay mechanism
-capacity = 100000
-batchSize = 32
-experiencesRequired = 1000
+class DefaultParams:
+    # Default parameters related to the DQN algorithm
+    gamma = 0.4
+    learningRate = 0.0001
+    targetNetworkUpdate = 1000
+    learningUpdatePeriod = 1
 
-# Default parameters related to the Deep Neural Network
-numberOfNeurons = 512
-dropout = 0.2
+    # Default parameters related to the Experience Replay mechanism
+    capacity = 100000
+    batch_size = 32
+    experiencesRequired = 1000
 
-# Default parameters related to the Epsilon-Greedy exploration technique
-epsilonStart = 1.0
-epsilonEnd = 0.01
-epsilonDecay = 10000
+    # Default parameters related to the Deep Neural Network
+    hidden_dim = 512
+    dropout = 0.2
 
-# Default parameters regarding the sticky actions RL generalization technique
-alpha = 0.1
+    # Default parameters related to the Epsilon-Greedy exploration technique
+    epsilonStart = 1.0
+    epsilonEnd = 0.01
+    epsilonDecay = 10000
 
-# Default parameters related to preprocessing
-filterOrder = 5
+    # Default parameters regarding the sticky actions RL generalization technique
+    alpha = 0.1
 
-# Default paramters related to the clipping of both the gradient and the RL rewards
-gradientClipping = 1
-rewardClipping = 1
+    # Default parameters related to preprocessing
+    filterOrder = 5
 
-# Default parameter related to the L2 Regularization
-L2Factor = 0.000001
+    # Default paramters related to the clipping of both the gradient and the RL rewards
+    gradientClipping = 1
+    rewardClipping = 1
 
-# Default paramter related to the hardware acceleration (CUDA)
-GPUNumber = 0
-
-###############################################################################
-############################### Class ReplayMemory ############################
-###############################################################################
+    # Default parameter related to the L2 Regularization
+    L2Factor = 0.000001
 
 
 class ReplayMemory:
@@ -81,7 +75,7 @@ class ReplayMemory:
                 - reset: Reset the replay memory.
     """
 
-    def __init__(self, capacity=capacity):
+    def __init__(self, capacity=DefaultParams.capacity):
         """
         GOAL: Initializating the replay memory data structure.
 
@@ -91,7 +85,7 @@ class ReplayMemory:
 
         OUTPUTS: /
         """
-
+        self.capacity = capacity
         self.memory = deque(maxlen=capacity)
 
     def push(self, state, action, reward, nextState, done):
@@ -111,11 +105,11 @@ class ReplayMemory:
 
         self.memory.append((state, action, reward, nextState, done))
 
-    def sample(self, batchSize):
+    def sample(self, batch_size):
         """
         GOAL: Sample a batch of experiences from the replay memory.
 
-        INPUTS: - batchSize: Size of the batch to sample.
+        INPUTS: - batch_size: Size of the batch to sample.
 
         OUTPUTS: - state: RL states of the experience batch sampled.
                  - action: RL actions of the experience batch sampled.
@@ -125,7 +119,7 @@ class ReplayMemory:
         """
 
         state, action, reward, nextState, done = zip(
-            *random.sample(self.memory, batchSize))
+            *random.sample(self.memory, batch_size))
         return state, action, reward, nextState, done
 
     def __len__(self):
@@ -149,12 +143,7 @@ class ReplayMemory:
         OUTPUTS: /
         """
 
-        self.memory = deque(maxlen=capacity)
-
-
-###############################################################################
-################################### Class DQN #################################
-###############################################################################
+        self.memory = deque(maxlen=self.capacity)
 
 
 class DQN(nn.Module):
@@ -162,71 +151,48 @@ class DQN(nn.Module):
     GOAL: Implementing the Deep Neural Network of the DQN Reinforcement
           Learning algorithm.
 
-    VARIABLES:  - fc1: Fully Connected layer number 1.
-                - fc2: Fully Connected layer number 2.
-                - fc3: Fully Connected layer number 3.
-                - fc4: Fully Connected layer number 4.
-                - fc5: Fully Connected layer number 5.
-                - dropout1: Dropout layer number 1.
-                - dropout2: Dropout layer number 2.
-                - dropout3: Dropout layer number 3.
-                - dropout4: Dropout layer number 4.
-                - bn1: Batch normalization layer number 1.
-                - bn2: Batch normalization layer number 2.
-                - bn3: Batch normalization layer number 3.
-                - bn4: Batch normalization layer number 4.
-
     METHODS:    - __init__: Initialization of the Deep Neural Network.
                 - forward: Forward pass of the Deep Neural Network.
     """
 
     def __init__(self,
-                 numberOfInputs,
-                 numberOfOutputs,
-                 numberOfNeurons=numberOfNeurons,
-                 dropout=dropout):
+                 in_dim,
+                 out_dim,
+                 hidden_dim=DefaultParams.hidden_dim,
+                 dropout=DefaultParams.dropout):
         """
         GOAL: Defining and initializing the Deep Neural Network of the
               DQN Reinforcement Learning algorithm.
 
-        INPUTS: - numberOfInputs: Number of inputs of the Deep Neural Network.
-                - numberOfOutputs: Number of outputs of the Deep Neural Network.
-                - numberOfNeurons: Number of neurons per layer in the Deep Neural Network.
+        INPUTS: - in_dim: Number of inputs of the Deep Neural Network.
+                - out_dim: Number of outputs of the Deep Neural Network.
+                - hidden_dim: Number of neurons per layer in the Deep Neural Network.
                 - dropout: Droupout probability value (handling of overfitting).
 
         OUTPUTS: /
         """
-
-        # Call the constructor of the parent class (Pytorch torch.nn.Module)
-        super(DQN, self).__init__()
+        super().__init__()
 
         # Definition of some Fully Connected layers
-        self.fc1 = nn.Linear(numberOfInputs, numberOfNeurons)
-        self.fc2 = nn.Linear(numberOfNeurons, numberOfNeurons)
-        self.fc3 = nn.Linear(numberOfNeurons, numberOfNeurons)
-        self.fc4 = nn.Linear(numberOfNeurons, numberOfNeurons)
-        self.fc5 = nn.Linear(numberOfNeurons, numberOfOutputs)
-
-        # Definition of some Batch Normalization layers
-        self.bn1 = nn.BatchNorm1d(numberOfNeurons)
-        self.bn2 = nn.BatchNorm1d(numberOfNeurons)
-        self.bn3 = nn.BatchNorm1d(numberOfNeurons)
-        self.bn4 = nn.BatchNorm1d(numberOfNeurons)
-
-        # Definition of some Dropout layers.
-        self.dropout1 = nn.Dropout(dropout)
-        self.dropout2 = nn.Dropout(dropout)
-        self.dropout3 = nn.Dropout(dropout)
-        self.dropout4 = nn.Dropout(dropout)
+        self.mlp = nn.Sequential([
+            # layer 1
+            nn.Linear(in_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(),
+            nn.Dropout(dropout),
+            # layer 2
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.LeakyReLU(),
+            nn.Dropout(dropout),
+            # out layer
+            nn.Linear(hidden_dim, out_dim)
+        ])
 
         # Xavier initialization for the entire neural network
-        torch.nn.init.xavier_uniform_(self.fc1.weight)
-        torch.nn.init.xavier_uniform_(self.fc2.weight)
-        torch.nn.init.xavier_uniform_(self.fc3.weight)
-        torch.nn.init.xavier_uniform_(self.fc4.weight)
-        torch.nn.init.xavier_uniform_(self.fc5.weight)
+        torch.nn.init.xavier_uniform_(self.mlp.weight)
 
-    def forward(self, input):
+    def forward(self, x):
         """
         GOAL: Implementing the forward pass of the Deep Neural Network.
 
@@ -234,18 +200,8 @@ class DQN(nn.Module):
 
         OUTPUTS: - output: Output of the Deep Neural Network.
         """
-
-        x = self.dropout1(F.leaky_relu(self.bn1(self.fc1(input))))
-        x = self.dropout2(F.leaky_relu(self.bn2(self.fc2(x))))
-        x = self.dropout3(F.leaky_relu(self.bn3(self.fc3(x))))
-        x = self.dropout4(F.leaky_relu(self.bn4(self.fc4(x))))
-        output = self.fc5(x)
+        output = self.mlp(x)
         return output
-
-
-###############################################################################
-################################ Class TDQN ###################################
-###############################################################################
 
 
 class TDQN:
@@ -257,7 +213,7 @@ class TDQN:
                 - gamma: Discount factor of the DQN algorithm.
                 - learningRate: Learning rate of the ADAM optimizer.
                 - capacity: Capacity of the experience replay memory.
-                - batchSize: Size of the batch to sample from the replay memory.
+                - batch_size: Size of the batch to sample from the replay memory.
                 - targetNetworkUpdate: Frequency at which the target neural
                                        network is updated.
                 - observationSpace: Size of the RL observation space.
@@ -301,16 +257,22 @@ class TDQN:
     def __init__(self,
                  observationSpace,
                  actionSpace,
-                 numberOfNeurons=numberOfNeurons,
-                 dropout=dropout,
-                 gamma=gamma,
-                 learningRate=learningRate,
-                 targetNetworkUpdate=targetNetworkUpdate,
-                 epsilonStart=epsilonStart,
-                 epsilonEnd=epsilonEnd,
-                 epsilonDecay=epsilonDecay,
-                 capacity=capacity,
-                 batchSize=batchSize):
+                 hidden_dim=DefaultParams.hidden_dim,
+                 dropout=DefaultParams.dropout,
+                 gamma=DefaultParams.gamma,
+                 learningRate=DefaultParams.learningRate,
+                 targetNetworkUpdate=DefaultParams.targetNetworkUpdate,
+                 epsilonStart=DefaultParams.epsilonStart,
+                 epsilonEnd=DefaultParams.epsilonEnd,
+                 epsilonDecay=DefaultParams.epsilonDecay,
+                 capacity=DefaultParams.capacity,
+                 batch_size=DefaultParams.batch_size,
+                 L2Factor=DefaultParams.L2Factor,
+                 rewardClipping=DefaultParams.rewardClipping,
+                 alpha=DefaultParams.gradientClipping,
+                 gradientClipping=DefaultParams.gradientClipping,
+                 learningUpdatePeriod=DefaultParams.learningUpdatePeriod,
+                 filterOrder=DefaultParams.filterOrder):
         """
         GOAL: Initializing the RL agent based on the DQN Reinforcement Learning
               algorithm, by setting up the DQN algorithm parameters as well as
@@ -318,7 +280,7 @@ class TDQN:
 
         INPUTS: - observationSpace: Size of the RL observation space.
                 - actionSpace: Size of the RL action space.
-                - numberOfNeurons: Number of neurons per layer in the Deep Neural Network.
+                - hidden_dim: Number of neurons per layer in the Deep Neural Network.
                 - dropout: Droupout probability value (handling of overfitting).
                 - gamma: Discount factor of the DQN algorithm.
                 - learningRate: Learning rate of the ADAM optimizer.
@@ -330,7 +292,7 @@ class TDQN:
                 - epsilonDecay: Decay factor (exponential) of Epsilon, from the
                                 Epsilon-Greedy exploration technique.
                 - capacity: Capacity of the Experience Replay memory.
-                - batchSize: Size of the batch to sample from the replay memory.
+                - batch_size: Size of the batch to sample from the replay memory.
 
         OUTPUTS: /
         """
@@ -339,17 +301,17 @@ class TDQN:
         random.seed(0)
 
         # Check availability of CUDA for the hardware (CPU or GPU)
-        self.device = torch.device('cuda:' +
-                                   str(GPUNumber) if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         # Set the general parameters of the DQN algorithm
+        self.alpha = alpha
         self.gamma = gamma
         self.learningRate = learningRate
         self.targetNetworkUpdate = targetNetworkUpdate
 
         # Set the Experience Replay mechnism
         self.capacity = capacity
-        self.batchSize = batchSize
+        self.batch_size = batch_size
         self.replayMemory = ReplayMemory(capacity)
 
         # Set both the observation and action spaces
@@ -357,42 +319,49 @@ class TDQN:
         self.actionSpace = actionSpace
 
         # Set the two Deep Neural Networks of the DQN algorithm (policy and target)
-        self.policyNetwork = DQN(observationSpace, actionSpace, numberOfNeurons,
+        self.policyNetwork = DQN(observationSpace, actionSpace, hidden_dim,
                                  dropout).to(self.device)
-        self.targetNetwork = DQN(observationSpace, actionSpace, numberOfNeurons,
+        self.targetNetwork = DQN(observationSpace, actionSpace, hidden_dim,
                                  dropout).to(self.device)
         self.targetNetwork.load_state_dict(self.policyNetwork.state_dict())
         self.policyNetwork.eval()
         self.targetNetwork.eval()
 
         # Set the Deep Learning optimizer
+        self.learningRate = learningRate
         self.optimizer = optim.Adam(self.policyNetwork.parameters(),
                                     lr=learningRate,
                                     weight_decay=L2Factor)
 
         # Set the Epsilon-Greedy exploration technique
+        self.epsilonDecay = epsilonDecay
         self.epsilonValue = lambda iteration: epsilonEnd + (
             epsilonStart - epsilonEnd) * math.exp(-1 * iteration / epsilonDecay)
 
+        # Clipping
+        self.rewardClipping = rewardClipping
+        self.gradientClipping = gradientClipping
+        self.filterOrder = filterOrder
+
         # Initialization of the iterations counter
         self.iterations = 0
+        self.learningUpdatePeriod = learningUpdatePeriod
 
         # Initialization of the tensorboard writer
         self.writer = SummaryWriter('runs/' +
-                                    datetime.datetime.now().strftime("%d/%m/%Y-%H:%M:%S"))
+                                    datetime.datetime.now().strftime('%d/%m/%Y-%H:%M:%S'))
 
-    def getNormalizationCoefficients(self, tradingEnv):
+    def getNormalizationCoefficients(self, tradingData):
         """
         GOAL: Retrieve the coefficients required for the normalization
               of input data.
 
-        INPUTS: - tradingEnv: RL trading environement to process.
+        INPUTS: - tradingData: data from RL trading environement to process.
 
         OUTPUTS: - coefficients: Normalization coefficients.
         """
 
         # Retrieve the available trading data
-        tradingData = tradingEnv.data
         closePrices = tradingData['Close'].tolist()
         lowPrices = tradingData['Low'].tolist()
         highPrices = tradingData['High'].tolist()
@@ -498,21 +467,11 @@ class TDQN:
         OUTPUTS: - reward: Process RL reward.
         """
 
-        return np.clip(reward, -rewardClipping, rewardClipping)
+        return np.clip(reward, -self.rewardClipping, self.rewardClipping)
 
     def updateTargetNetwork(self):
-        """
-        GOAL: Taking into account the update frequency (parameter), update the
-              target Deep Neural Network by copying the policy Deep Neural Network
-              parameters (weights, bias, etc.).
-
-        INPUTS: /
-
-        OUTPUTS: /
-        """
-
         # Check if an update is required (update frequency)
-        if (self.iterations % targetNetworkUpdate == 0):
+        if (self.iterations % self.targetNetworkUpdate == 0):
             # Transfer the DNN parameters (policy network -> target network)
             self.targetNetwork.load_state_dict(self.policyNetwork.state_dict())
 
@@ -558,7 +517,7 @@ class TDQN:
         # EXPLOITATION -> RL policy
         if (random.random() > self.epsilonValue(self.iterations)):
             # Sticky action (RL generalization mechanism)
-            if (random.random() > alpha):
+            if (random.random() > self.alpha):
                 action, Q, QValues = self.chooseAction(state)
             else:
                 action = previousAction
@@ -576,24 +535,25 @@ class TDQN:
 
         return action, Q, QValues
 
-    def learning(self, batchSize=batchSize):
+    def learning(self):
         """
         GOAL: Sample a batch of past experiences and learn from it
               by updating the Reinforcement Learning policy.
 
-        INPUTS: batchSize: Size of the batch to sample from the replay memory.
+        INPUTS: batch_size: Size of the batch to sample from the replay memory.
 
         OUTPUTS: /
         """
 
         # Check that the replay memory is filled enough
-        if (len(self.replayMemory) >= batchSize):
+        if (len(self.replayMemory) >= self.batch_size):
 
             # Set the Deep Neural Network in training mode
             self.policyNetwork.train()
 
             # Sample a batch of experiences from the replay memory
-            state, action, reward, nextState, done = self.replayMemory.sample(batchSize)
+            state, action, reward, nextState, done = self.replayMemory.sample(
+                self.batch_size)
 
             # Initialization of Pytorch tensors for the RL experience elements
             state = torch.tensor(state, dtype=torch.float, device=self.device)
@@ -611,7 +571,7 @@ class TDQN:
                 nextActions = torch.max(self.policyNetwork(nextState), 1)[1]
                 nextQValues = self.targetNetwork(nextState).gather(
                     1, nextActions.unsqueeze(1)).squeeze(1)
-                expectedQValues = reward + gamma * nextQValues * (1 - done)
+                expectedQValues = reward + self.gamma * nextQValues * (1 - done)
 
             # Compute the Huber loss
             loss = F.smooth_l1_loss(currentQValues, expectedQValues)
@@ -622,7 +582,7 @@ class TDQN:
 
             # Gradient Clipping
             torch.nn.utils.clip_grad_norm_(self.policyNetwork.parameters(),
-                                           gradientClipping)
+                                           self.gradientClipping)
 
             # Perform the Deep Neural Network optimization
             self.optimizer.step()
@@ -635,7 +595,7 @@ class TDQN:
 
     def training(self,
                  trainingEnv,
-                 trainingParameters=[],
+                 trainingParameters=(),
                  verbose=False,
                  rendering=False,
                  plotTraining=False,
@@ -654,8 +614,7 @@ class TDQN:
                                    the trading strategy performance.
 
         OUTPUTS: - trainingEnv: Training RL environment.
-        """
-        """
+
         # Compute and plot the expected performance of the trading policy
         trainingEnv = self.plotExpectedPerformance(trainingEnv, trainingParameters, iterations=50)
         return trainingEnv
@@ -684,8 +643,8 @@ class TDQN:
         try:
             # If required, print the training progression
             if verbose:
-                print("Training progression (hardware selected => " + str(self.device) +
-                      "):")
+                print('Training progression (hardware selected => ' + str(self.device) +
+                      '):')
 
             # Training phase for the number of episodes specified as parameter
             for episode in tqdm(range(trainingParameters[0]), disable=not (verbose)):
@@ -694,7 +653,8 @@ class TDQN:
                 for i in range(len(trainingEnvList)):
 
                     # Set the initial RL variables
-                    coefficients = self.getNormalizationCoefficients(trainingEnvList[i])
+                    coefficients = self.getNormalizationCoefficients(
+                        trainingEnvList[i].data)
                     trainingEnvList[i].reset()
                     startingPoint = random.randrange(len(trainingEnvList[i].data.index))
                     trainingEnvList[i].setStartingPoint(startingPoint)
@@ -732,7 +692,7 @@ class TDQN:
 
                         # Execute the DQN learning procedure
                         stepsCounter += 1
-                        if stepsCounter == learningUpdatePeriod:
+                        if stepsCounter == self.learningUpdatePeriod:
                             self.learning()
                             stepsCounter = 0
 
@@ -769,7 +729,7 @@ class TDQN:
 
         except KeyboardInterrupt:
             print()
-            print("WARNING: Training prematurely interrupted...")
+            print('WARNING: Training prematurely interrupted...')
             print()
             self.policyNetwork.eval()
 
@@ -788,7 +748,7 @@ class TDQN:
                                  xlabel='Episode')
             ax.plot(performanceTrain)
             ax.plot(performanceTest)
-            ax.legend(["Training", "Testing"])
+            ax.legend(['Training', 'Testing'])
             plt.savefig(''.join(
                 ['Figures/',
                  str(marketSymbol), '_TrainingTestingPerformance', '.png']))
@@ -822,11 +782,11 @@ class TDQN:
 
         # Apply data augmentation techniques to process the testing set
         dataAugmentation = DataAugmentation()
-        testingEnvSmoothed = dataAugmentation.lowPassFilter(testingEnv, filterOrder)
-        trainingEnv = dataAugmentation.lowPassFilter(trainingEnv, filterOrder)
+        testingEnvSmoothed = dataAugmentation.lowPassFilter(testingEnv, self.filterOrder)
+        trainingEnv = dataAugmentation.lowPassFilter(trainingEnv, self.filterOrder)
 
         # Initialization of some RL variables
-        coefficients = self.getNormalizationCoefficients(trainingEnv)
+        coefficients = self.getNormalizationCoefficients(trainingEnv.data)
         state = self.processState(testingEnvSmoothed.reset(), coefficients)
         testingEnv.reset()
         QValues0 = []
@@ -877,7 +837,6 @@ class TDQN:
         ax1 = fig.add_subplot(111, ylabel='Total reward collected', xlabel='Episode')
         ax1.plot(score)
         plt.savefig(''.join(['Figures/', str(marketSymbol), 'TrainingResults', '.png']))
-        #plt.show()
 
     def plotQValues(self, QValues0, QValues1, marketSymbol):
         """
@@ -896,7 +855,6 @@ class TDQN:
         ax1.plot(QValues1)
         ax1.legend(['Short', 'Long'])
         plt.savefig(''.join(['Figures/', str(marketSymbol), '_QValues', '.png']))
-        #plt.show()
 
     def plotExpectedPerformance(self, trainingEnv, trainingParameters=[], iterations=10):
         """
@@ -934,7 +892,7 @@ class TDQN:
                                 stateLength, transactionCosts)
 
         # Print the hardware selected for the training of the Deep Neural Network (either CPU or GPU)
-        print("Hardware selected for training: " + str(self.device))
+        print('Hardware selected for training: ' + str(self.device))
 
         try:
 
@@ -943,8 +901,8 @@ class TDQN:
 
                 # Print the progression
                 print(''.join([
-                    "Expected performance evaluation progression: ",
-                    str(iteration + 1), "/",
+                    'Expected performance evaluation progression: ',
+                    str(iteration + 1), '/',
                     str(iterations)
                 ]))
 
@@ -956,7 +914,7 @@ class TDQN:
 
                         # Set the initial RL variables
                         coefficients = self.getNormalizationCoefficients(
-                            trainingEnvList[i])
+                            trainingEnvList[i].data)
                         trainingEnvList[i].reset()
                         startingPoint = random.randrange(
                             len(trainingEnvList[i].data.index))
@@ -993,7 +951,7 @@ class TDQN:
 
                             # Execute the DQN learning procedure
                             stepsCounter += 1
-                            if stepsCounter == learningUpdatePeriod:
+                            if stepsCounter == self.learningUpdatePeriod:
                                 self.learning()
                                 stepsCounter = 0
 
@@ -1020,8 +978,8 @@ class TDQN:
                     self.policyNetwork.load_state_dict(initialWeights)
                     self.targetNetwork.load_state_dict(initialWeights)
                     self.optimizer = optim.Adam(self.policyNetwork.parameters(),
-                                                lr=learningRate,
-                                                weight_decay=L2Factor)
+                                                lr=self.learningRate,
+                                                weight_decay=self.L2Factor)
                     self.replayMemory.reset()
                     self.iterations = 0
                     stepsCounter = 0
@@ -1030,7 +988,7 @@ class TDQN:
 
         except KeyboardInterrupt:
             print()
-            print("WARNING: Expected performance evaluation prematurely interrupted...")
+            print('WARNING: Expected performance evaluation prematurely interrupted...')
             print()
             self.policyNetwork.eval()
 
@@ -1058,7 +1016,7 @@ class TDQN:
                                  xlabel='Episode')
             ax.plot([performanceTrain[e][i] for e in range(trainingParameters[0])])
             ax.plot([performanceTest[e][i] for e in range(trainingParameters[0])])
-            ax.legend(["Training", "Testing"])
+            ax.legend(['Training', 'Testing'])
             plt.savefig(''.join([
                 'Figures/',
                 str(marketSymbol), '_TrainingTestingPerformance',
@@ -1079,7 +1037,7 @@ class TDQN:
                         expectedPerformanceTest - stdPerformanceTest,
                         expectedPerformanceTest + stdPerformanceTest,
                         alpha=0.25)
-        ax.legend(["Training", "Testing"])
+        ax.legend(['Training', 'Testing'])
         plt.savefig(''.join([
             'Figures/',
             str(marketSymbol), '_TrainingTestingExpectedPerformance', '.png'
@@ -1125,8 +1083,7 @@ class TDQN:
         """
 
         plt.figure()
-        plt.plot([self.epsilonValue(i) for i in range(10 * epsilonDecay)])
-        plt.xlabel("Iterations")
-        plt.ylabel("Epsilon value")
+        plt.plot([self.epsilonValue(i) for i in range(10 * self.epsilonDecay)])
+        plt.xlabel('Iterations')
+        plt.ylabel('Epsilon value')
         plt.savefig(''.join(['Figures/', 'EpsilonAnnealing', '.png']))
-        #plt.show()

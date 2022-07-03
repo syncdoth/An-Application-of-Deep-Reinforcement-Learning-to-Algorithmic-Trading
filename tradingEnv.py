@@ -16,7 +16,7 @@ pd.options.mode.chained_assignment = None
 
 from matplotlib import pyplot as plt
 
-from data_preparation.dataDownloader import (AlphaVantage, CSVHandler, YahooFinance)
+from data_preparation.dataDownloader import CSVHandler
 from data_preparation.fictiveStockGenerator import StockGenerator
 
 # Boolean handling the saving of the stock market data downloaded
@@ -90,24 +90,8 @@ class TradingEnv(gym.Env):
             # Check if the stock market data is already present in the database
             csvConverter = CSVHandler()
             csvName = "".join(['Data/', marketSymbol, '_', startingDate, '_', endingDate])
-            exists = os.path.isfile(csvName + '.csv')
-
-            # If affirmative, load the stock market data from the database
-            if (exists):
-                self.data = csvConverter.CSVToDataframe(csvName)
-            # Otherwise, download the stock market data from Yahoo Finance and save it in the database
-            else:
-                downloader1 = YahooFinance()
-                downloader2 = AlphaVantage()
-                try:
-                    self.data = downloader1.getDailyData(marketSymbol, startingDate,
-                                                         endingDate)
-                except:
-                    self.data = downloader2.getDailyData(marketSymbol, startingDate,
-                                                         endingDate)
-
-                if saving == True:
-                    csvConverter.dataframeToCSV(csvName, self.data)
+            assert os.path.isfile(csvName + '.csv')
+            self.data = csvConverter.CSVToDataframe(csvName)
 
         # Interpolate in case of missing data
         self.data.replace(0.0, np.nan, inplace=True)
