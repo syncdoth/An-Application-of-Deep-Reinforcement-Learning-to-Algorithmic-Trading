@@ -40,8 +40,10 @@ endingDate = '2020-1-1'
 splitingDate = '2018-1-1'
 
 # Variables defining the default observation and state spaces
-stateLength = 30
-observationSpace = 1 + (stateLength - 1) * 4
+stateLength = 2
+#observationSpace = 1 + (stateLength - 1) * 4
+observationSpace = 5
+
 actionSpace = 2
 
 # Variables setting up the default transaction costs
@@ -95,7 +97,8 @@ stocks = {
     'Toyota': '7203.T',
     'Coca Cola': 'KO',
     'AB InBev': 'ABI.BR',
-    'Kirin': '2503.T'
+    'Kirin': '2503.T',
+    'Samsung': '005930'
 }
 
 # Dictionary listing the 5 trading indices considered as testbench
@@ -104,7 +107,8 @@ indices = {
     'S&P 500': 'SPY',
     'NASDAQ 100': 'QQQ',
     'FTSE 100': 'EZU',
-    'Nikkei 225': 'EWJ'
+    'Nikkei 225': 'EWJ',
+    'Samsung': '005930'
 }
 
 # Dictionary listing the 25 company stocks considered as testbench
@@ -133,7 +137,8 @@ companies = {
     'Toyota': '7203.T',
     'Coca Cola': 'KO',
     'AB InBev': 'ABI.BR',
-    'Kirin': '2503.T'
+    'Kirin': '2503.T',
+    'Samsung': '005930'
 }
 
 # Dictionary listing the classical trading strategies supported
@@ -352,6 +357,7 @@ class TradingSimulator:
                             rendering=True,
                             showPerformance=True,
                             saveStrategy=False,
+                            timesteps=20,
                             **kwargs):
         """
         GOAL: Simulate a new trading strategy on a certain stock included in the
@@ -436,7 +442,7 @@ class TradingSimulator:
         if ai:
             strategyModule = importlib.import_module(str(strategy))
             className = getattr(strategyModule, strategy)
-            tradingStrategy = className(observationSpace, actionSpace, **kwargs)
+            tradingStrategy = className(observationSpace, actionSpace, timesteps=timesteps, **kwargs)
         else:
             strategyModule = importlib.import_module('classicalStrategy')
             className = getattr(strategyModule, strategy)

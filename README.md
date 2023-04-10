@@ -3,13 +3,15 @@ Experimental code supporting the results presented in the scientific research pa
 > Thibaut Théate and Damien Ernst. "An Application of Deep Reinforcement Learning to Algorithmic Trading." (2020).
 > [[arxiv]](https://arxiv.org/abs/2004.06627)
 
+# Personal Implication of Reinforcement Learning in different aspects, such as Deep Q Learning, usage of CNN in Reinforcement Learning.
+# HKUST AIDL Society November - December Algorithmic Trading Project
 
 
 # Dependencies
 
 The dependencies are listed in the text file "requirements.txt":
-* Python 3.7.4
-* Pytorch 1.5.0
+* Python >= 3.6.8
+* Pytorch >= 1.7.1
 * Tensorboard
 * Gym
 * Numpy
@@ -32,6 +34,7 @@ Simulating (training and testing) a chosen supported algorithmic trading strateg
 
 ```bash
 python main.py -strategy STRATEGY -stock STOCK
+# Currently working with Apple, Samsung Electronics
 ```
 
 with:
